@@ -63,10 +63,27 @@ export const StudentDashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!profile) return;
-      const allAttempts = await localDb.getAttempts();
-      setAttempts(allAttempts.filter(a => a.userId === profile.uid));
-      setQuestions(await localDb.getQuestions());
-      setSettings(await localDb.getSettings());
+      
+      try {
+        const allAttempts = await localDb.getAttempts();
+        setAttempts(allAttempts.filter(a => a.userId === profile.uid));
+      } catch (err) {
+        console.error("Failed to load attempts:", err);
+      }
+
+      try {
+        const qs = await localDb.getQuestions();
+        setQuestions(qs);
+      } catch (err) {
+        console.error("Failed to load questions:", err);
+      }
+
+      try {
+        const sets = await localDb.getSettings();
+        setSettings(sets);
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      }
     };
     fetchData();
   }, [profile, isQuizzing]);

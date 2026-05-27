@@ -103,8 +103,14 @@ export const localDb = {
   // --- QUESTIONS ---
   getQuestions: async (): Promise<Question[]> => {
     try {
-      const snapshot = await getDocs(query(collection(db, COLLECTIONS.QUESTIONS), orderBy('createdAt', 'desc')));
-      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Question));
+      const snapshot = await getDocs(collection(db, COLLECTIONS.QUESTIONS));
+      const questions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Question));
+      questions.sort((a, b) => {
+        const timeA = a.createdAt || '';
+        const timeB = b.createdAt || '';
+        return timeB.localeCompare(timeA);
+      });
+      return questions;
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, COLLECTIONS.QUESTIONS);
       return [];
@@ -181,17 +187,22 @@ export const localDb = {
 
       let q;
       if (isAdmin) {
-        q = query(collection(db, COLLECTIONS.ATTEMPTS), orderBy('timestamp', 'desc'));
+        q = collection(db, COLLECTIONS.ATTEMPTS);
       } else {
         q = query(
           collection(db, COLLECTIONS.ATTEMPTS), 
-          where('userId', '==', user.uid),
-          orderBy('timestamp', 'desc')
+          where('userId', '==', user.uid)
         );
       }
       
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ ...(doc.data() as any), id: doc.id } as Attempt));
+      const attempts = snapshot.docs.map(doc => ({ ...(doc.data() as any), id: doc.id } as Attempt));
+      attempts.sort((a, b) => {
+        const timeA = a.timestamp || '';
+        const timeB = b.timestamp || '';
+        return timeB.localeCompare(timeA);
+      });
+      return attempts;
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, COLLECTIONS.ATTEMPTS);
       return [];

@@ -140,20 +140,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
   }, [activeTab]);
 
   const fetchData = async () => {
+    let qs: any[] = [];
+    let atts: any[] = [];
+    let us: any[] = [];
+    let sets: any = null;
+
     try {
-      const [qs, atts, us, sets] = await Promise.all([
-        localDb.getQuestions(),
-        localDb.getAttempts(),
-        localDb.getUsers(),
-        localDb.getSettings()
-      ]);
-      
+      qs = await localDb.getQuestions();
       setQuestions(qs || []);
+    } catch (err: any) {
+      console.error('Failed to load questions in admin:', err);
+    }
+
+    try {
+      atts = await localDb.getAttempts();
       setAttempts(atts || []);
+    } catch (err: any) {
+      console.error('Failed to load attempts in admin:', err);
+    }
+
+    try {
+      us = await localDb.getUsers();
       setStudents(us?.filter(u => u.role === 'student').map(u => ({ ...u, id: u.uid })) || []);
+    } catch (err: any) {
+      console.error('Failed to load users in admin:', err);
+    }
+
+    try {
+      sets = await localDb.getSettings();
       if (sets) setSettings(prev => ({ ...prev, ...sets }));
     } catch (err: any) {
-      toast.error('Data loading fail: ' + err.message);
+      console.error('Failed to load settings in admin:', err);
     }
   };
 
