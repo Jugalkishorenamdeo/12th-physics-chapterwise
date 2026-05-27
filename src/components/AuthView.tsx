@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider 
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -26,12 +28,56 @@ export const AuthView: React.FC = () => {
         setAppTitle(settings.appTitle);
       }
     });
-  }, []);
+
+    // Check if there's any sign-in result from a previous redirect flow on mount
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          setLoading(true);
+          const user = result.user;
+          const userRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userRef);
+
+          if (!userDoc.exists()) {
+            setTempUser(user);
+            setStudentName((user.displayName || '').toUpperCase());
+            setShowNamePrompt(true);
+          } else {
+            toast.success('Welcome back!');
+            await refreshProfile();
+          }
+        }
+      } catch (error: any) {
+        console.error('Redirect sign-in error:', error);
+        toast.error('Redirect authentication failed: ' + error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkRedirect();
+  }, [refreshProfile]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
     
+    // Auto-detect mobile devices to use redirect sign-in which is more reliable
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      try {
+        await signInWithRedirect(auth, provider);
+        return; // Redirecting...
+      } catch (error: any) {
+        console.error('Redirect auth error:', error);
+        toast.error('Redirect sign-in error: ' + error.message);
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
@@ -53,12 +99,25 @@ export const AuthView: React.FC = () => {
       }
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user') {
-        // User closed the popup, no need to show an error message
         setLoading(false);
         return;
       }
-      console.error('Auth error:', error);
-      toast.error('Sign-in error: ' + error.message);
+      
+      if (error.code === 'auth/popup-blocked') {
+        const toastId = toast.loading('Popup window was blocked. Retrying with redirect...');
+        try {
+          await signInWithRedirect(auth, provider);
+          toast.dismiss(toastId);
+          return;
+        } catch (redirError: any) {
+          toast.dismiss(toastId);
+          console.error('Redirect fallback error:', redirError);
+          toast.error('Redirect error: ' + redirError.message);
+        }
+      } else {
+        console.error('Auth error:', error);
+        toast.error('Sign-in error: ' + error.message);
+      }
     } finally {
       setLoading(false);
     }
