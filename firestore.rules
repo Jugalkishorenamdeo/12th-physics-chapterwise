@@ -62,7 +62,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /attempts/{aId} {
+    match /chapterwise_responses/{aId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
       allow create: if isSignedIn() && (isAdmin() || (incoming().userId == request.auth.uid && isValidAttempt(incoming())));

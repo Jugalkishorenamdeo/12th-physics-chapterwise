@@ -106,8 +106,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Attempts
-    match /attempts/{attemptId} {
+    // Attempts (chapterwise_responses)
+    match /chapterwise_responses/{attemptId} {
       allow get: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       

@@ -18,7 +18,7 @@ import { UserProfile, Question, Attempt, AppSettings } from '../types';
 const COLLECTIONS = {
   USERS: 'users',
   QUESTIONS: 'questions',
-  ATTEMPTS: 'attempts',
+  ATTEMPTS: 'chapterwise_responses',
   SETTINGS: 'settings'
 };
 

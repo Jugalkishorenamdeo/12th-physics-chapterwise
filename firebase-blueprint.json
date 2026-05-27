@@ -77,7 +77,7 @@
       "schema": "Question",
       "description": "Bank of physics questions."
     },
-    "attempts": {
+    "chapterwise_responses": {
       "schema": "Attempt",
       "description": "History of student quiz attempts."
     },

@@ -43,7 +43,7 @@ export const StudentDashboard: React.FC = () => {
   
   // Filters for attempts and remaining
   const [filters, setFilters] = useState({ topic: '', difficulty: '' });
-  const [sort, setSort] = useState<{ field: SortField, direction: 'asc' | 'desc' }>({ field: 'timestamp', direction: 'desc' });
+  const [sort, setSort] = useState<{ field: SortField, direction: 'asc' | 'desc' }>({ field: 'topic', direction: 'asc' });
 
   const { refreshProfile } = useAuth();
 
@@ -78,7 +78,7 @@ export const StudentDashboard: React.FC = () => {
         topicSet.add(q.topic.trim());
       }
     });
-    return Array.from(topicSet).sort();
+    return Array.from(topicSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   }, [questions]);
 
   const filteredAttempts = useMemo(() => {
@@ -99,6 +99,23 @@ export const StudentDashboard: React.FC = () => {
         }
         
         if (typeof valA === 'string' && typeof valB === 'string') {
+          if (sort.field === 'difficulty') {
+            const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+            const ordA = order[valA] || 99;
+            const ordB = order[valB] || 99;
+            return sort.direction === 'asc' ? ordA - ordB : ordB - ordA;
+          }
+          if (sort.field === 'topic') {
+            const comp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+            if (comp !== 0) {
+              return sort.direction === 'asc' ? comp : -comp;
+            }
+            // fallback to difficulty
+            const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+            const ordA = order[a.difficulty] || 99;
+            const ordB = order[b.difficulty] || 99;
+            return ordA - ordB; // default to ascending difficulty
+          }
           return sort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         }
         
@@ -151,6 +168,23 @@ export const StudentDashboard: React.FC = () => {
       let valB: any = (b as any)[fieldKey] ?? '';
       
       if (typeof valA === 'string' && typeof valB === 'string') {
+        if (fieldKey === 'difficulty') {
+          const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+          const ordA = order[valA] || 99;
+          const ordB = order[valB] || 99;
+          return sort.direction === 'asc' ? ordA - ordB : ordB - ordA;
+        }
+        if (fieldKey === 'topic') {
+          const comp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+          if (comp !== 0) {
+            return sort.direction === 'asc' ? comp : -comp;
+          }
+          // fallback to difficulty
+          const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+          const ordA = order[a.difficulty] || 99;
+          const ordB = order[b.difficulty] || 99;
+          return ordA - ordB;
+        }
         return sort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
       }
       

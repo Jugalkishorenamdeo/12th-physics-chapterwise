@@ -77,8 +77,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTopic, setFilterTopic] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('');
-  const [sortKey, setSortKey] = useState<string>('timestamp');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortKey, setSortKey] = useState<string>('topic');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   // Analysis Tabs State
@@ -128,7 +128,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
         topicSet.add(q.topic.trim());
       }
     });
-    return Array.from(topicSet).sort();
+    return Array.from(topicSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   }, [questions]);
 
   useEffect(() => {
@@ -224,8 +224,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
       (!filterDifficulty || item.difficulty === filterDifficulty)
     );
     return q.sort((a, b) => {
-      const valA = (a[sortKey as keyof Question] || '').toString().toLowerCase();
-      const valB = (b[sortKey as keyof Question] || '').toString().toLowerCase();
+      let valA: any = a[sortKey as keyof Question] || '';
+      let valB: any = b[sortKey as keyof Question] || '';
+      
+      if (sortKey === 'topic') {
+        const comp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+        if (comp !== 0) {
+          return sortDir === 'asc' ? comp : -comp;
+        }
+        // fallback to difficulty
+        const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+        const ordA = order[a.difficulty] || 99;
+        const ordB = order[b.difficulty] || 99;
+        return ordA - ordB;
+      }
+      if (sortKey === 'difficulty') {
+        const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+        const ordA = order[valA] || 99;
+        const ordB = order[valB] || 99;
+        return sortDir === 'asc' ? ordA - ordB : ordB - ordA;
+      }
+      
+      valA = valA.toString().toLowerCase();
+      valB = valB.toString().toLowerCase();
       return sortDir === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
     });
   }, [questions, searchTerm, filterTopic, filterDifficulty, sortKey, sortDir]);
@@ -243,13 +264,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
         valA = a.score / a.totalQuestions;
         valB = b.score / b.totalQuestions;
       }
+      
+      if (sortKey === 'topic') {
+        const comp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+        if (comp !== 0) {
+          return sortDir === 'asc' ? comp : -comp;
+        }
+        // fallback to difficulty
+        const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+        const ordA = order[a.difficulty] || 99;
+        const ordB = order[b.difficulty] || 99;
+        return ordA - ordB;
+      }
+      if (sortKey === 'difficulty') {
+        const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+        const ordA = order[valA] || 99;
+        const ordB = order[valB] || 99;
+        return sortDir === 'asc' ? ordA - ordB : ordB - ordA;
+      }
+      
+      valA = valA.toString().toLowerCase();
+      valB = valB.toString().toLowerCase();
       return sortDir === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
     });
   }, [attempts, searchTerm, filterTopic, filterDifficulty, sortKey, sortDir]);
 
   const sheshPryas = useMemo(() => {
     const results: any[] = [];
-    const topics = Array.from(new Set(questions.map(q => q.topic)));
+    const topics = Array.from(new Set(questions.map(q => q.topic))).sort((a: any, b: any) => (a as string).localeCompare(b as string, undefined, { numeric: true, sensitivity: 'base' }));
     
     students.forEach(s => {
       topics.forEach(t => {
@@ -275,8 +317,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
       (!filterTopic || r.topic === filterTopic) &&
       (!filterDifficulty || r.difficulty === filterDifficulty)
     ).sort((a: any, b: any) => {
-      const valA = a[sortKey] || '';
-      const valB = b[sortKey] || '';
+      let valA = a[sortKey] || '';
+      let valB = b[sortKey] || '';
+      
+      if (sortKey === 'topic') {
+        const comp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+        if (comp !== 0) {
+          return sortDir === 'asc' ? comp : -comp;
+        }
+        // fallback to difficulty
+        const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+        const ordA = order[a.difficulty] || 99;
+        const ordB = order[b.difficulty] || 99;
+        return ordA - ordB;
+      }
+      if (sortKey === 'difficulty') {
+        const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+        const ordA = order[valA] || 99;
+        const ordB = order[valB] || 99;
+        return sortDir === 'asc' ? ordA - ordB : ordB - ordA;
+      }
+      
+      valA = valA.toString().toLowerCase();
+      valB = valB.toString().toLowerCase();
       return sortDir === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
     });
   }, [students, questions, attempts, searchTerm, filterTopic, filterDifficulty, sortKey, sortDir, settings]);
