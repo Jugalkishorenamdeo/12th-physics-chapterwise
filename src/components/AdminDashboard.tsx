@@ -443,6 +443,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
       let valA = a[vishleshanSortKey as keyof typeof a];
       let valB = b[vishleshanSortKey as keyof typeof b];
       
+      if (vishleshanSortKey === 'topic') {
+        const comp = (valA || '').localeCompare(valB || '', undefined, { numeric: true, sensitivity: 'base' });
+        return vishleshanSortDir === 'asc' ? comp : -comp;
+      }
+      
+      if (vishleshanSortKey === 'difficulty') {
+        const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+        const ordA = order[valA] || 99;
+        const ordB = order[valB] || 99;
+        return vishleshanSortDir === 'asc' ? ordA - ordB : ordB - ordA;
+      }
+      
       if (typeof valA === 'string') {
         const res = valA.toLowerCase().localeCompare((valB as string).toLowerCase());
         return vishleshanSortDir === 'asc' ? res : -res;
@@ -599,6 +611,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
         valA = a.score / a.totalQuestions; 
         valB = b.score / b.totalQuestions; 
       }
+      if (sortKey === 'topic') {
+        const comp = (valA || '').localeCompare(valB || '', undefined, { numeric: true, sensitivity: 'base' });
+        return sortDir === 'asc' ? comp : -comp;
+      }
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        const comp = valA.localeCompare(valB);
+        return sortDir === 'asc' ? comp : -comp;
+      }
       return sortDir === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
     });
   }, [attempts, searchTerm, filterTopic, sortKey, sortDir, settings.certificateMinPercentage, uniqueTopics]);
@@ -697,6 +717,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
       const valB = b[analysisSortKey];
       
       if (valA === undefined || valB === undefined) return 0;
+      
+      if (analysisSortKey === 'topic') {
+        const comp = (valA || '').localeCompare(valB || '', undefined, { numeric: true, sensitivity: 'base' });
+        return analysisSortDir === 'asc' ? comp : -comp;
+      }
+      
+      if (analysisSortKey === 'difficulty') {
+        const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+        const ordA = order[valA] || 99;
+        const ordB = order[valB] || 99;
+        return analysisSortDir === 'asc' ? ordA - ordB : ordB - ordA;
+      }
       
       if (typeof valA === 'string') {
         const strA = valA.toLowerCase();
@@ -872,8 +904,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSettingsSave }
     }
     
     const sortedQs = [...questions].sort((a, b) => {
-      if (a.topic !== b.topic) return (a.topic || '').localeCompare(b.topic || '');
-      return (a.difficulty || '').localeCompare(b.difficulty || '');
+      if (a.topic !== b.topic) {
+        return (a.topic || '').localeCompare(b.topic || '', undefined, { numeric: true, sensitivity: 'base' });
+      }
+      const order: Record<string, number> = { 'Easy': 1, 'easy': 1, 'Medium': 2, 'medium': 2, 'Hard': 3, 'hard': 3 };
+      const ordA = order[a.difficulty || ''] || 99;
+      const ordB = order[b.difficulty || ''] || 99;
+      return ordA - ordB;
     });
     
     const exportData = sortedQs.map(q => ({

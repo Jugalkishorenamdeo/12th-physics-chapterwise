@@ -20,7 +20,7 @@ export const AuthView: React.FC = () => {
   const [tempUser, setTempUser] = useState<any>(null);
   const [studentName, setStudentName] = useState('');
   const [appTitle, setAppTitle] = useState('12th Physics-chapterwise');
-  const { refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
 
   useEffect(() => {
     localDb.getSettings().then(settings => {
@@ -29,19 +29,26 @@ export const AuthView: React.FC = () => {
       }
     });
 
+    // Auto-detect if user is already signed into Firebase Auth but lacks a Firestore user profile doc
+    if (user && !profile && !showNamePrompt && !tempUser) {
+      setTempUser(user);
+      setStudentName((user.displayName || '').toUpperCase());
+      setShowNamePrompt(true);
+    }
+
     // Check if there's any sign-in result from a previous redirect flow on mount
     const checkRedirect = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
           setLoading(true);
-          const user = result.user;
-          const userRef = doc(db, 'users', user.uid);
+          const userObj = result.user;
+          const userRef = doc(db, 'users', userObj.uid);
           const userDoc = await getDoc(userRef);
 
           if (!userDoc.exists()) {
-            setTempUser(user);
-            setStudentName((user.displayName || '').toUpperCase());
+            setTempUser(userObj);
+            setStudentName((userObj.displayName || '').toUpperCase());
             setShowNamePrompt(true);
           } else {
             toast.success('Welcome back!');
@@ -57,41 +64,26 @@ export const AuthView: React.FC = () => {
     };
 
     checkRedirect();
-  }, [refreshProfile]);
+  }, [user, profile, refreshProfile, showNamePrompt, tempUser]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
-    
-    // Auto-detect mobile devices to use redirect sign-in which is more reliable
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      try {
-        await signInWithRedirect(auth, provider);
-        return; // Redirecting...
-      } catch (error: any) {
-        console.error('Redirect auth error:', error);
-        toast.error('Redirect sign-in error: ' + error.message);
-        setLoading(false);
-      }
-      return;
-    }
 
     try {
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+      const userObj = result.user;
 
-      if (!user) throw new Error('Sign in failed - no user returned');
+      if (!userObj) throw new Error('Sign in failed - no user returned');
 
       // Check for user profile in Firestore
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, 'users', userObj.uid);
       const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
         // Show name prompt instead of auto-creating
-        setTempUser(user);
-        setStudentName((user.displayName || '').toUpperCase());
+        setTempUser(userObj);
+        setStudentName((userObj.displayName || '').toUpperCase());
         setShowNamePrompt(true);
       } else {
         toast.success('Welcome back!');
