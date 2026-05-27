@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a student or admin in the system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "admin"] },
+        "attemptsRemaining": { "type": "number" },
+        "totalAttempts": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "A physics quiz question.",
+      "type": "object",
+      "properties": {
+        "topic": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
+        "question": { "type": "string" },
+        "optionA": { "type": "string" },
+        "optionB": { "type": "string" },
+        "optionC": { "type": "string" },
+        "optionD": { "type": "string" },
+        "correctOption": { "type": "string", "enum": ["A", "B", "C", "D"] },
+        "remark": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["topic", "difficulty", "question", "optionA", "optionB", "optionC", "optionD", "correctOption"]
+    },
+    "Attempt": {
+      "title": "Attempt",
+      "description": "A record of a completed quiz attempt.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "topic": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "score": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "topic", "difficulty", "score", "totalQuestions", "timestamp"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application settings.",
+      "type": "object",
+      "properties": {
+        "adminPassword": { "type": "string" },
+        "quizTime": { "type": "number", "description": "Time in minutes" },
+        "maintenanceMode": { "type": "boolean" },
+        "maxAttempts": { "type": "number" },
+        "leaveQuizEnabled": { "type": "boolean" },
+        "certificateSignatory": { "type": "string" },
+        "certificateMinPercentage": { "type": "number" },
+        "isCertificateEnabled": { "type": "boolean" },
+        "maxAttemptsPerLevel": { "type": "number" },
+        "certificateMessage": { "type": "string" },
+        "randomizeQuestions": { "type": "boolean" },
+        "randomizeOptions": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Collection of user profiles."
+    },
+    "questions": {
+      "schema": "Question",
+      "description": "Bank of physics questions."
+    },
+    "attempts": {
+      "schema": "Attempt",
+      "description": "History of student quiz attempts."
+    },
+    "settings": {
+      "schema": "Settings",
+      "description": "Application configuration singleton."
+    }
+  }
+}

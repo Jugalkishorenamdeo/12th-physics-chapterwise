@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      // Identity lookup for admin role
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.email is string && data.email.size() <= 256
+        && data.displayName is string && data.displayName.size() <= 128
+        && data.role in ['student', 'admin']
+        && (data.role == 'admin' ? isAdmin() : true) // Prevent self-promoting to admin
+        && data.attemptsRemaining is number
+        && data.totalAttempts is number;
+    }
+
+    function isValidQuestion(data) {
+      return data.topic is string && data.topic.size() <= 100
+        && data.difficulty in ['Easy', 'Medium', 'Hard']
+        && data.question is string && data.question.size() <= 2000
+        && data.optionA is string && data.optionA.size() <= 500
+        && data.optionB is string && data.optionB.size() <= 500
+        && data.optionC is string && data.optionC.size() <= 500
+        && data.optionD is string && data.optionD.size() <= 500
+        && data.correctOption in ['A', 'B', 'C', 'D'];
+    }
+
+    function isValidAttempt(data) {
+      return data.userId == request.auth.uid
+        && data.userName is string && data.userName.size() <= 128
+        && data.topic is string && data.topic.size() <= 100
+        && data.difficulty in ['Easy', 'Medium', 'Hard']
+        && data.score is number
+        && data.totalQuestions is number;
+    }
+
+    function isValidSettings(data) {
+      return data.quizTime is number
+        && data.maxAttempts is number
+        && data.maintenanceMode is boolean
+        && data.leaveQuizEnabled is boolean;
+    }
+
+    // --- Collections ---
+
+    // Users
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin(); // Only admins can see student list
+      
+      allow create: if isOwner(userId) 
+        && isValidUser(incoming())
+        && incoming().createdAt == request.time
+        && incoming().role == 'student'; // Initial registration always student
+
+      allow update: if isOwner(userId) 
+        && isValidUser(incoming())
+        && (
+          // Admin can update anything, Student can only update their own display name (not role)
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasAny(['role', 'attemptsRemaining', 'totalAttempts', 'displayName'])) ||
+          (incoming().diff(existing()).affectedKeys().hasOnly(['displayName']) && incoming().role == existing().role)
+        );
+      
+      allow delete: if isAdmin();
+    }
+
+    // Questions
+    match /questions/{questionId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && isValidQuestion(incoming()) && isValidId(questionId);
+      allow update: if isAdmin() && isValidQuestion(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Attempts
+    match /attempts/{attemptId} {
+      allow get: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isOwner(incoming().userId) 
+        && isValidAttempt(incoming()) 
+        && isValidId(attemptId)
+        && incoming().timestamp == request.time;
+      
+      // Attempts are immutable
+      allow update: if false; 
+      allow delete: if isAdmin();
+    }
+
+    // Settings
+    match /settings/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isValidSettings(incoming());
+    }
+  }
+}

@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // Identity lookup for admin role with fallback to bootstrapped email
+      return isSignedIn() && (
+        (request.auth.token.email == 'jugalkishorenamdeo@gmail.com' && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isSystemAdmin() {
+      return isSignedIn() && request.auth.token.email == 'jugalkishorenamdeo@gmail.com' && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUser(data) {
+      return (!('uid' in data) || (data.uid is string && data.uid.size() <= 128))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 256))
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128))
+        && (!('role' in data) || data.role in ['student', 'admin'])
+        && (!('attemptsRemaining' in data) || data.attemptsRemaining is number)
+        && (!('totalAttempts' in data) || data.totalAttempts is number);
+    }
+
+    function isValidAttempt(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && (!('topic' in data) || (data.topic is string && data.topic.size() <= 1024))
+        && (!('difficulty' in data) || (data.difficulty is string && data.difficulty.size() <= 256))
+        && (!('score' in data) || data.score is number)
+        && (!('totalQuestions' in data) || data.totalQuestions is number)
+        && (!('userName' in data) || (data.userName is string && data.userName.size() <= 256))
+        && (!('timestamp' in data) || (data.timestamp is string && data.timestamp.size() <= 128));
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin(); 
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /questions/{qId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /attempts/{aId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && (isAdmin() || (incoming().userId == request.auth.uid && isValidAttempt(incoming())));
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{sId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
