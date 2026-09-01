@@ -44,9 +44,15 @@ export const AuthView: React.FC = () => {
           setLoading(true);
           const userObj = result.user;
           const userRef = doc(db, 'users', userObj.uid);
-          const userDoc = await getDoc(userRef);
+          let userExists = false;
+          try {
+            const userDoc = await getDoc(userRef);
+            userExists = userDoc.exists();
+          } catch (err) {
+            console.warn('Profile getDoc notice:', err);
+          }
 
-          if (!userDoc.exists()) {
+          if (!userExists) {
             setTempUser(userObj);
             setStudentName((userObj.displayName || '').toUpperCase());
             setShowNamePrompt(true);
@@ -78,9 +84,15 @@ export const AuthView: React.FC = () => {
 
       // Check for user profile in Firestore
       const userRef = doc(db, 'users', userObj.uid);
-      const userDoc = await getDoc(userRef);
+      let userExists = false;
+      try {
+        const userDoc = await getDoc(userRef);
+        userExists = userDoc.exists();
+      } catch (err) {
+        console.warn('User profile lookup notice:', err);
+      }
 
-      if (!userDoc.exists()) {
+      if (!userExists) {
         // Show name prompt instead of auto-creating
         setTempUser(userObj);
         setStudentName((userObj.displayName || '').toUpperCase());
@@ -136,8 +148,15 @@ export const AuthView: React.FC = () => {
         createdAt: new Date().toISOString()
       };
 
-      await setDoc(userRef, newProfile);
-      toast.success(`Welcome ${newProfile.displayName}! Account created.`);
+      try {
+        await setDoc(userRef, newProfile);
+      } catch (err) {
+        console.warn('Could not write profile to Firestore (quota or offline), saving locally:', err);
+      }
+
+      localDb.setCurrentUser(newProfile);
+      toast.success(`Welcome ${newProfile.displayName}! Account ready.`);
+      setShowNamePrompt(false);
       await refreshProfile();
     } catch (error: any) {
       toast.error('Error saving profile: ' + error.message);

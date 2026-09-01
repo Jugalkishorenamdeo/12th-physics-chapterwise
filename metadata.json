@@ -2,5 +2,5 @@
   "name": "12 th Physics Chapter Wise ",
   "description": "A comprehensive quiz platform for 12th-grade Physics students with real-time leaderboards, CSV question importing, and administrative controls.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

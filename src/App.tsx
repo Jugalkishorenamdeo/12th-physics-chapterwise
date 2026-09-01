@@ -13,12 +13,13 @@ import { Lock, ShieldAlert, Users as UsersIcon, Eye, EyeOff } from 'lucide-react
 import { toast } from 'react-hot-toast';
 import { localDb } from './lib/localDb';
 import { AppSettings } from './types';
+import { safeLocalStorage, safeSessionStorage } from './lib/safeStorage';
 
 const MainApp: React.FC = () => {
   const { profile, loading, isAdmin, logout, isStudentView, setStudentView } = useAuth();
   
   const [isAuthorized, setIsAuthorized] = React.useState(() => {
-    return sessionStorage.getItem('admin_authorized') === 'true';
+    return safeSessionStorage.getItem('admin_authorized') === 'true';
   });
   const [loginForm, setLoginForm] = React.useState({ username: '', password: '' });
   const [loginError, setLoginError] = React.useState(false);
@@ -28,7 +29,7 @@ const MainApp: React.FC = () => {
   const [showSafetyNotice, setShowSafetyNotice] = React.useState(false);
 
   React.useEffect(() => {
-    const isDismissed = localStorage.getItem('safety_notice_dismissed') || sessionStorage.getItem('safety_notice_dismissed');
+    const isDismissed = safeLocalStorage.getItem('safety_notice_dismissed') || safeSessionStorage.getItem('safety_notice_dismissed');
     if (isDismissed !== 'true') {
       setShowSafetyNotice(true);
     } else {
@@ -39,8 +40,8 @@ const MainApp: React.FC = () => {
   const dismissNotice = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowSafetyNotice(false);
-    localStorage.setItem('safety_notice_dismissed', 'true');
-    sessionStorage.setItem('safety_notice_dismissed', 'true');
+    safeLocalStorage.setItem('safety_notice_dismissed', 'true');
+    safeSessionStorage.setItem('safety_notice_dismissed', 'true');
     document.body.classList.add('hide-banners');
     toast.success('Notice dismissed');
   };
@@ -92,7 +93,7 @@ const MainApp: React.FC = () => {
 
     if (loginForm.username === targetUser && loginForm.password === targetPass) {
       setIsAuthorized(true);
-      sessionStorage.setItem('admin_authorized', 'true');
+      safeSessionStorage.setItem('admin_authorized', 'true');
       toast.success('Admin access granted');
     } else {
       setLoginError(true);

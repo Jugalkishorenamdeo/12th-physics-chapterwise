@@ -1,6 +1,12 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, browserLocalPersistence, browserPopupRedirectResolver } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager,
+  Firestore 
+} from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -8,7 +14,19 @@ export const auth = initializeAuth(app, {
   persistence: browserLocalPersistence,
   popupRedirectResolver: browserPopupRedirectResolver,
 });
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+
+let firestoreInstance: Firestore;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  }, (firebaseConfig as any).firestoreDatabaseId);
+} catch {
+  firestoreInstance = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+}
+
+export const db = firestoreInstance;
 
 // Error handler utility
 export enum OperationType {
@@ -34,12 +52,15 @@ export interface FirestoreErrorInfo {
       providerId?: string | null;
       email?: string | null;
     }[];
-  }
+  };
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): FirestoreErrorInfo {
+  const errMessage = error instanceof Error ? error.message : String(error);
+  const isQuotaError = errMessage.toLowerCase().includes('quota') || errMessage.toLowerCase().includes('resource-exhausted');
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMessage,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -54,18 +75,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+
+  if (isQuotaError) {
+    console.warn('[Firestore] Quota limit reached. Operating in offline/cached storage mode.', errInfo);
+  } else {
+    console.warn('[Firestore Operation Notice]:', JSON.stringify(errInfo));
+  }
+
+  return errInfo;
 }
 
-// Validation connection
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
-    }
-  }
-}
-// testConnection();
